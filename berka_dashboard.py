@@ -253,8 +253,8 @@ with st.sidebar:
 # ─────────────────────────────────────────────────────────────
 st.markdown('<div class="section-header">Loan Amount vs Last Transaction Amount</div>',
                 unsafe_allow_html=True)
-    fig3 = go.Figure()
-    for status, symbol, label in [
+fig3 = go.Figure()
+for status, symbol, label in [
         ("D", "diamond", "Status D: Running, In Trouble"),
         ("B", "circle",  "Status B: Finished, Unpaid")
     ]:
