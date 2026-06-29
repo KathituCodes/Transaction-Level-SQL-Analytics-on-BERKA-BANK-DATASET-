@@ -1,11 +1,14 @@
+"""
+Berka Bank SQL Analytics Dashboard
+Author : Urbanus Kathitu | Kat.Codes
+GitHub : github.com/KathituCodes/Berka-Bank-SQL-Analytics-and-Dashboard
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import os
 
-# ─────────────────────────────────────────────────────────────
-# PAGE CONFIG — must be first Streamlit call
-# ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Berka Bank SQL Analytics",
     page_icon="🏦",
@@ -13,41 +16,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ─────────────────────────────────────────────────────────────
-# COLOR PALETTE
-# ─────────────────────────────────────────────────────────────
 NAVY   = "#1F3864"
 TEAL   = "#2E75B6"
 RED    = "#C00000"
 GREEN  = "#375623"
 ORANGE = "#E97132"
 
-# ─────────────────────────────────────────────────────────────
-# CUSTOM CSS
-# Light/dark mode compatible — no forced white text on main content
-# Sidebar always dark so sidebar text stays white
-# Navigation uses styled buttons instead of radio buttons
-# ─────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
-    /* ── SIDEBAR ─────────────────────────────────────── */
     [data-testid="stSidebar"] {{
         background: linear-gradient(180deg, {NAVY} 0%, #162a50 100%);
     }}
-
-    /* Sidebar text always white — sidebar is always dark */
     [data-testid="stSidebar"] p,
     [data-testid="stSidebar"] span,
     [data-testid="stSidebar"] label,
     [data-testid="stSidebar"] div {{
         color: #E8EEF7 !important;
     }}
-
-    /* ── MAIN CONTENT ─────────────────────────────────── */
-    /* Do NOT force any text colors on main content */
-    /* Let Streamlit's light/dark theme handle text color */
-
-    /* Metric cards */
     [data-testid="metric-container"] {{
         background-color: transparent;
         border: 1px solid rgba(46, 117, 182, 0.3);
@@ -55,8 +40,6 @@ st.markdown(f"""
         border-radius: 8px;
         padding: 12px 16px;
     }}
-
-    /* Section headers — gradient banner, always readable */
     .section-header {{
         background: linear-gradient(90deg, {NAVY}, {TEAL});
         color: white !important;
@@ -67,8 +50,6 @@ st.markdown(f"""
         margin-bottom: 16px;
         letter-spacing: 0.2px;
     }}
-
-    /* Insight box — blue tint, dark text for readability */
     .insight-box {{
         background-color: #EBF3FB;
         border-left: 4px solid {TEAL};
@@ -79,8 +60,6 @@ st.markdown(f"""
         color: #1a2e4a !important;
         line-height: 1.6;
     }}
-
-    /* Warning box — amber tint */
     .warning-box {{
         background-color: #FFF3E0;
         border-left: 4px solid {ORANGE};
@@ -91,8 +70,6 @@ st.markdown(f"""
         color: #5a3000 !important;
         line-height: 1.6;
     }}
-
-    /* Risk box — red tint */
     .risk-box {{
         background-color: #FFE5E5;
         border-left: 4px solid {RED};
@@ -103,57 +80,19 @@ st.markdown(f"""
         color: #7a0000 !important;
         line-height: 1.6;
     }}
-
-    /* Navigation buttons */
-    .nav-btn {{
-        display: block;
-        width: 100%;
-        padding: 10px 16px;
-        margin-bottom: 8px;
-        border-radius: 8px;
-        border: none;
-        background-color: rgba(255,255,255,0.08);
-        color: #E8EEF7 !important;
-        font-size: 13px;
-        font-weight: 500;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.2s;
-    }}
-
-    .nav-btn-active {{
-        display: block;
-        width: 100%;
-        padding: 10px 16px;
-        margin-bottom: 8px;
-        border-radius: 8px;
-        border: none;
-        background: linear-gradient(90deg, {TEAL}, #4a9fd4);
-        color: white !important;
-        font-size: 13px;
-        font-weight: 700;
-        text-align: left;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(46,117,182,0.4);
-    }}
-
-    /* Summary cards on overview */
     .query-card {{
         border: 1px solid rgba(0,0,0,0.1);
         border-radius: 8px;
         padding: 16px;
         min-height: 150px;
     }}
-
     #MainMenu {{ visibility: hidden; }}
     footer {{ visibility: hidden; }}
 </style>
 """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# SESSION STATE — tracks active navigation page
-# ─────────────────────────────────────────────────────────────
+# SESSION STATE
 if "page" not in st.session_state:
     st.session_state.page = "Overview"
 
@@ -161,9 +100,7 @@ def set_page(p):
     st.session_state.page = p
 
 
-# ─────────────────────────────────────────────────────────────
 # DATA LOADING
-# ─────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -171,7 +108,7 @@ def load_data():
     def read(filename):
         path = os.path.join(data_dir, filename)
         if not os.path.exists(path):
-            st.error(f"Missing file: data/{filename}. Add it to the /data folder.")
+            st.error(f"Missing file: data/{filename}")
             st.stop()
         return pd.read_csv(path)
 
@@ -185,12 +122,46 @@ def load_data():
 q1, q2, q3, q4 = load_data()
 
 
-# ─────────────────────────────────────────────────────────────
-# SIDEBAR
-# ─────────────────────────────────────────────────────────────
-with st.sidebar:
+# CHART LAYOUT HELPER
+# Forces dark text on white background — readable in both light and dark mode
+def chart_layout(height=360, **kwargs):
+    axis_style = dict(
+        color="#1A1A1A",
+        tickfont=dict(color="#1A1A1A", size=11),
+        title_font=dict(color="#1A1A1A", size=12),
+        gridcolor="#E8E8E8"
+    )
+    base = dict(
+        height=height,
+        margin=dict(t=20, b=20, l=10, r=10),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(color="#1A1A1A", family="Arial, sans-serif"),
+        showlegend=False,
+    )
+    # Apply axis style defaults if xaxis/yaxis passed
+    for axis in ["xaxis", "yaxis"]:
+        if axis in kwargs:
+            merged = {**axis_style, **kwargs[axis]}
+            kwargs[axis] = merged
+    base.update(kwargs)
+    return base
 
-    # Header
+
+def legend_style():
+    return dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        font=dict(color="#1A1A1A", size=12),
+        bgcolor="rgba(255,255,255,0.9)",
+        bordercolor="#E0E0E0",
+        borderwidth=1
+    )
+
+
+# SIDEBAR
+with st.sidebar:
     st.markdown(f"""
     <div style='text-align:center; padding:16px 0 12px 0;'>
         <div style='font-size:36px;'>🏦</div>
@@ -205,20 +176,19 @@ with st.sidebar:
     <hr style='border-color:rgba(46,117,182,0.4); margin:8px 0 16px 0;'>
     """, unsafe_allow_html=True)
 
-    # Navigation buttons
     st.markdown("<p style='color:#90CAF9; font-size:11px; font-weight:700; "
                 "letter-spacing:1px; margin-bottom:8px;'>NAVIGATE</p>",
                 unsafe_allow_html=True)
 
     pages = [
-        ("🏠 Overview",                 "Overview"),
+        ("🏠 Overview",                    "Overview"),
         ("📊 Query 1: Balance vs Default", "Query 1: Balance vs Default"),
-        ("📉 Query 2: Velocity Drop",    "Query 2: Velocity Drop"),
-        ("⚠️ Query 3: Cash-Out Risk",    "Query 3: Cash-Out Risk"),
+        ("📉 Query 2: Velocity Drop",      "Query 2: Velocity Drop"),
+        ("⚠️ Query 3: Cash-Out Risk",      "Query 3: Cash-Out Risk"),
     ]
 
     for label, key in pages:
-        css_class = "nav-btn-active" if st.session_state.page == key else "nav-btn"
+        active = st.session_state.page == key
         if st.button(label, key=f"nav_{key}", use_container_width=True):
             set_page(key)
             st.rerun()
@@ -226,7 +196,6 @@ with st.sidebar:
     st.markdown("<hr style='border-color:rgba(46,117,182,0.4); margin:16px 0;'>",
                 unsafe_allow_html=True)
 
-    # Dataset info
     st.markdown(f"""
     <div style='color:#90CAF9; font-size:11px; line-height:1.9;'>
         <p style='color:white; font-size:12px; font-weight:700;
@@ -247,50 +216,9 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# SHARED CHART LAYOUT HELPER
-# Produces clean white charts that work in both light and dark mode
-# ─────────────────────────────────────────────────────────────
-st.markdown('<div class="section-header">Loan Amount vs Last Transaction Amount</div>',
-                unsafe_allow_html=True)
-    fig3 = go.Figure()
-    for status, symbol, label in [
-        ("D", "diamond", "Status D: Running, In Trouble"),
-        ("B", "circle",  "Status B: Finished, Unpaid")
-    ]:
-        subset = active_df[active_df["loan_status"] == status]
-        if subset.empty:
-            continue
-        s_colors = [RED if r == "HIGH RISK: Large withdrawal on bad loan account"
-                    else TEAL for r in subset["risk_flag"]]
-        fig3.add_trace(go.Scatter(
-            x=subset["loan_amount"], y=subset["last_txn_amount"],
-            mode="markers", name=label,
-            marker=dict(color=s_colors, size=14, symbol=symbol,
-                        line=dict(width=1, color="white")),
-            text=subset["account_id"].astype(str),
-            hovertemplate=("<b>Account %{text}</b><br>"
-                           "Loan: %{x:,.0f}<br>"
-                           "Last Txn: %{y:,.0f}<extra></extra>")
-        ))
-    fig3.update_layout(**chart_layout(
-        height=320, showlegend=True,
-        xaxis=dict(gridcolor="#E0E0E0", title="Loan Amount",
-                   color="#1A1A1A", title_font=dict(color="#1A1A1A"),
-                   tickfont=dict(color="#1A1A1A")),
-        yaxis=dict(gridcolor="#E0E0E0", title="Last Transaction Amount",
-                   color="#1A1A1A", title_font=dict(color="#1A1A1A"),
-                   tickfont=dict(color="#1A1A1A")),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                    font=dict(color="#1A1A1A", size=12),
-                    bgcolor="rgba(255,255,255,0.9)",
-                    bordercolor="#E0E0E0", borderwidth=1)
-    ))
-    st.plotly_chart(fig3, use_container_width=True)
-
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 # PAGE: OVERVIEW
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 page = st.session_state.page
 
 if page == "Overview":
@@ -313,10 +241,8 @@ if page == "Overview":
     c1.metric("Total Transactions", "1,056,320")
     c2.metric("Total Accounts",     "4,500")
     c3.metric("Total Loans",        "682")
-    c4.metric("Bad Loans (B+D)",    "76",
-              delta="-11.1% of total", delta_color="inverse")
-    c5.metric("Good Loans (A+C)",   "606",
-              delta="88.9% of total")
+    c4.metric("Bad Loans (B+D)",    "76",   delta="-11.1% of total", delta_color="inverse")
+    c5.metric("Good Loans (A+C)",   "606",  delta="88.9% of total")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -338,8 +264,8 @@ if page == "Overview":
         ))
         fig.update_layout(**chart_layout(
             showlegend=False,
-            yaxis=dict(gridcolor="#F0F0F0", title="Number of Loans", color="#1A1A1A"),
-            xaxis=dict(tickangle=-15, color="#1A1A1A")
+            xaxis=dict(tickangle=-15, title=""),
+            yaxis=dict(title="Number of Loans")
         ))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -350,8 +276,7 @@ if page == "Overview":
             labels=["Good (A+C)", "Bad (B+D)"],
             values=[606, 76],
             marker_colors=[TEAL, RED],
-            hole=0.55,
-            textinfo="label+percent",
+            hole=0.55, textinfo="label+percent",
             hovertemplate="<b>%{label}</b><br>Count: %{value}<extra></extra>"
         ))
         fig2.update_layout(**chart_layout(
@@ -391,7 +316,7 @@ if page == "Overview":
             <b style='font-size:15px;'>📉 Query 2: Velocity Drop</b><br><br>
             <span style='color:#333; font-size:13px;'>
                 Flagged accounts whose monthly transactions dropped more than
-                <b>40%</b> in a single month. Worst case: <b>-90%</b> in one month.
+                <b>40%</b> in a single month. Worst case: <b>-90%</b>.
             </span>
         </div>
         """, unsafe_allow_html=True)
@@ -408,9 +333,9 @@ if page == "Overview":
         """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 # PAGE: QUERY 1
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 elif page == "Query 1: Balance vs Default":
 
     st.markdown(f"<h2 style='color:{NAVY};'>Query 1: Does Account Balance Predict Default Risk?</h2>",
@@ -431,13 +356,11 @@ elif page == "Query 1: Balance vs Default":
     top_row    = q1[q1["balance_tier"] == "TOP 20%"].iloc[0]
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Bottom 20% Default Rate",
-              f"{bottom_row['default_rate_percent']}%", delta="High risk",
-              delta_color="inverse")
-    c2.metric("Top 20% Default Rate",
-              f"{top_row['default_rate_percent']}%",    delta="Low risk")
-    c3.metric("Risk Multiplier", "13x",
-              delta="Bottom defaults 13x more than top")
+    c1.metric("Bottom 20% Default Rate", f"{bottom_row['default_rate_percent']}%",
+              delta="High risk", delta_color="inverse")
+    c2.metric("Top 20% Default Rate",    f"{top_row['default_rate_percent']}%",
+              delta="Low risk")
+    c3.metric("Risk Multiplier", "13x",  delta="Bottom defaults 13x more")
     c4.metric("Total Loans in Comparison",
               int(bottom_row["total_loans"] + top_row["total_loans"]))
 
@@ -457,10 +380,9 @@ elif page == "Query 1: Balance vs Default":
             hovertemplate="<b>%{x}</b><br>Default Rate: %{y}%<extra></extra>"
         ))
         fig.update_layout(**chart_layout(
-            yaxis=dict(gridcolor="#F0F0F0", title="Default Rate (%)",
-                       range=[0, 45], color="#1A1A1A"),
-            xaxis=dict(title="Balance Tier", color="#1A1A1A"),
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(title="Balance Tier"),
+            yaxis=dict(title="Default Rate (%)", range=[0, 45])
         ))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -470,18 +392,14 @@ elif page == "Query 1: Balance vs Default":
         q1["good_loans"] = q1["total_loans"] - q1["bad_loans"]
         fig2 = go.Figure()
         fig2.add_trace(go.Bar(name="Good Loans", x=q1["balance_tier"],
-                              y=q1["good_loans"], marker_color=TEAL,
-                              hovertemplate="<b>%{x}</b><br>Good Loans: %{y}<extra></extra>"))
-        fig2.add_trace(go.Bar(name="Bad Loans", x=q1["balance_tier"],
-                              y=q1["bad_loans"], marker_color=RED,
-                              hovertemplate="<b>%{x}</b><br>Bad Loans: %{y}<extra></extra>"))
+                              y=q1["good_loans"], marker_color=TEAL))
+        fig2.add_trace(go.Bar(name="Bad Loans",  x=q1["balance_tier"],
+                              y=q1["bad_loans"],  marker_color=RED))
         fig2.update_layout(**chart_layout(
-            barmode="stack",
-            yaxis=dict(gridcolor="#F0F0F0", title="Number of Loans", color="#1A1A1A"),
-            xaxis=dict(title="Balance Tier", color="#1A1A1A"),
-            showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                        font=dict(color="#1A1A1A"))
+            barmode="stack", showlegend=True,
+            legend=legend_style(),
+            xaxis=dict(title="Balance Tier"),
+            yaxis=dict(title="Number of Loans")
         ))
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -493,25 +411,22 @@ elif page == "Query 1: Balance vs Default":
     <div class="insight-box">
         <b>Key Insight:</b> Lending to someone in the bottom 20% by average balance carries a
         37.5% default rate compared to just 2.85% for the top 20%. That is a 13x difference
-        in risk driven by a single behavioural signal. Average balance is a strong candidate
-        feature in a credit scoring model, exactly the kind of insight that drives alternative
-        credit scoring at companies like Pezesha and M-KOPA.
+        in risk driven by a single behavioural signal.
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="warning-box">
         <b>SQL Technique:</b> Three chained CTEs. CTE 1 calculates average balance per account.
-        CTE 2 uses NTILE(5) to split accounts into five equal groups by balance.
-        CTE 3 filters to top and bottom groups only.
-        Final SELECT joins to the loan table and computes default rates per group.
+        CTE 2 uses NTILE(5) to split accounts into five groups by balance.
+        CTE 3 filters to top and bottom groups. Final SELECT joins to loan table.
     </div>
     """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 # PAGE: QUERY 2
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 elif page == "Query 2: Velocity Drop":
 
     st.markdown(f"<h2 style='color:{NAVY};'>Query 2: Month-Over-Month Transaction Velocity Drop</h2>",
@@ -520,10 +435,8 @@ elif page == "Query 2: Velocity Drop":
     st.markdown("""
     <div class="insight-box">
         <b>Business Question:</b> Can we detect early warning signs of default by monitoring
-        sudden drops in transaction activity? A customer who goes from 10 transactions per month
-        to 1 in a single month may be in financial trouble before they miss a payment.
-        I flagged every account whose monthly transaction count dropped more than 40%
-        compared to the previous month using the LAG() window function.
+        sudden drops in transaction activity? I flagged every account whose monthly transaction
+        count dropped more than 40% compared to the previous month using LAG().
     </div>
     """, unsafe_allow_html=True)
 
@@ -552,11 +465,9 @@ elif page == "Query 2: Velocity Drop":
                       annotation_text="40% Threshold",
                       annotation_position="top right")
         fig.update_layout(**chart_layout(
-            yaxis=dict(gridcolor="#F0F0F0",
-                       title="% Change in Monthly Transactions",
-                       range=[-100, 0], color="#1A1A1A"),
-            xaxis=dict(title="Account ID", tickangle=-45, color="#1A1A1A"),
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(title="Account ID", tickangle=-45),
+            yaxis=dict(title="% Change in Monthly Transactions", range=[-100, 0])
         ))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -572,9 +483,9 @@ elif page == "Query 2: Velocity Drop":
             hovertemplate="<b>Year %{x}</b><br>Flagged: %{y}<extra></extra>"
         ))
         fig2.update_layout(**chart_layout(
-            yaxis=dict(gridcolor="#F0F0F0", title="Flagged Accounts", color="#1A1A1A"),
-            xaxis=dict(title="Year", color="#1A1A1A"),
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(title="Year"),
+            yaxis=dict(title="Number of Flagged Accounts")
         ))
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -593,10 +504,9 @@ elif page == "Query 2: Velocity Drop":
     ))
     fig3.update_layout(**chart_layout(
         height=300, showlegend=True,
-        yaxis=dict(gridcolor="#F0F0F0", title="Transaction Count", color="#1A1A1A"),
-        xaxis=dict(title="Account ID", tickangle=-45, color="#1A1A1A"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                    font=dict(color="#1A1A1A"))
+        legend=legend_style(),
+        xaxis=dict(title="Account ID", tickangle=-45),
+        yaxis=dict(title="Transaction Count")
     ))
     st.plotly_chart(fig3, use_container_width=True)
 
@@ -607,25 +517,22 @@ elif page == "Query 2: Velocity Drop":
     <div class="warning-box">
         <b>Important Observation:</b> December 1998 appears repeatedly in the results.
         This is a data collection artefact, not a genuine risk signal. The dataset ends
-        in late 1998, so many accounts have fewer transactions in their final recorded month
-        because data collection stopped mid-month. In production I would filter out the most
-        recent month before flagging risk. Recognising artefacts like this is a critical part
-        of responsible data analysis.
+        in late 1998, so many accounts have fewer transactions in their final recorded month.
+        In production I would filter out the most recent month before flagging risk.
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="insight-box">
         <b>SQL Technique:</b> LAG() window function partitioned by account_id and ordered
-        chronologically. For each account and each month, LAG() retrieves the prior month's
-        transaction count in a single pass with no loops.
+        chronologically. Processes all 1,056,320 rows in a single pass with no loops.
     </div>
     """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 # PAGE: QUERY 3
-# ─────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════
 elif page == "Query 3: Cash-Out Risk":
 
     st.markdown(f"<h2 style='color:{NAVY};'>Query 3: Cash-Out Before Default Risk Detection</h2>",
@@ -635,9 +542,8 @@ elif page == "Query 3: Cash-Out Risk":
     <div class="insight-box">
         <b>Business Question:</b> Can we detect accounts that are deliberately withdrawing
         funds before defaulting on a loan? I searched for accounts with a bad or troubled loan
-        (status B or D) whose most recent transaction was a large outgoing payment relative
-        to their average monthly income. I ran this query at two different thresholds to
-        observe how sensitivity changes.
+        whose most recent transaction was a large outgoing payment relative to average monthly
+        income. I ran this query at two different thresholds to observe how sensitivity changes.
     </div>
     """, unsafe_allow_html=True)
 
@@ -653,9 +559,9 @@ elif page == "Query 3: Cash-Out Risk":
         horizontal=True
     )
 
-    active_df       = q3 if "50%" in threshold else q4
-    threshold_val   = 50  if "50%" in threshold else 80
-    threshold_label = "50%" if "50%" in threshold else "80%"
+    active_df     = q3 if "50%" in threshold else q4
+    threshold_val = 50  if "50%" in threshold else 80
+    t_label       = "50%" if "50%" in threshold else "80%"
 
     high_risk_count = len(active_df[
         active_df["risk_flag"] == "HIGH RISK: Large withdrawal on bad loan account"
@@ -670,14 +576,14 @@ elif page == "Query 3: Cash-Out Risk":
               delta="Flagged for review" if high_risk_count > 0 else "None flagged",
               delta_color="inverse" if high_risk_count > 0 else "normal")
     c3.metric("MONITOR",           monitor_count)
-    c4.metric("Active Threshold",  f"{threshold_label} of avg inflow")
+    c4.metric("Active Threshold",  f"{t_label} of avg inflow")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     col_l, col_r = st.columns(2)
 
     with col_l:
-        st.markdown(f'<div class="section-header">Withdrawal % of Avg Inflow (Threshold: {threshold_label})</div>',
+        st.markdown(f'<div class="section-header">Withdrawal % of Avg Inflow (Threshold: {t_label})</div>',
                     unsafe_allow_html=True)
         bar_colors = [
             RED if r == "HIGH RISK: Large withdrawal on bad loan account" else TEAL
@@ -692,14 +598,12 @@ elif page == "Query 3: Cash-Out Risk":
             hovertemplate="<b>Account %{x}</b><br>Withdrawal: %{y}%<extra></extra>"
         ))
         fig.add_hline(y=threshold_val, line_dash="dash", line_color=ORANGE,
-                      annotation_text=f"{threshold_label} Threshold",
+                      annotation_text=f"{t_label} Threshold",
                       annotation_position="top right")
         fig.update_layout(**chart_layout(
-            yaxis=dict(gridcolor="#F0F0F0",
-                       title="Withdrawal as % of Avg Monthly Inflow",
-                       range=[0, 85], color="#1A1A1A"),
-            xaxis=dict(title="Account ID", tickangle=-30, color="#1A1A1A"),
-            showlegend=False
+            showlegend=False,
+            xaxis=dict(title="Account ID", tickangle=-30),
+            yaxis=dict(title="Withdrawal as % of Avg Monthly Inflow", range=[0, 85])
         ))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -711,13 +615,13 @@ elif page == "Query 3: Cash-Out Risk":
         pie_colors = [RED if "HIGH RISK" in f else GREEN for f in flag_counts["Risk Flag"]]
         fig2 = go.Figure(go.Pie(
             labels=flag_counts["Risk Flag"], values=flag_counts["Count"],
-            marker_colors=pie_colors, hole=0.5,
-            textinfo="label+value",
+            marker_colors=pie_colors, hole=0.5, textinfo="label+value",
             hovertemplate="<b>%{label}</b><br>Count: %{value}<extra></extra>"
         ))
         fig2.update_layout(**chart_layout(showlegend=False))
         st.plotly_chart(fig2, use_container_width=True)
 
+    # Scatter chart — clean single initialization, no duplicate loop
     st.markdown('<div class="section-header">Loan Amount vs Last Transaction Amount</div>',
                 unsafe_allow_html=True)
     fig3 = go.Figure()
@@ -728,8 +632,10 @@ elif page == "Query 3: Cash-Out Risk":
         subset = active_df[active_df["loan_status"] == status]
         if subset.empty:
             continue
-        s_colors = [RED if r == "HIGH RISK: Large withdrawal on bad loan account"
-                    else TEAL for r in subset["risk_flag"]]
+        s_colors = [
+            RED if r == "HIGH RISK: Large withdrawal on bad loan account" else TEAL
+            for r in subset["risk_flag"]
+        ]
         fig3.add_trace(go.Scatter(
             x=subset["loan_amount"], y=subset["last_txn_amount"],
             mode="markers", name=label,
@@ -742,13 +648,13 @@ elif page == "Query 3: Cash-Out Risk":
         ))
     fig3.update_layout(**chart_layout(
         height=320, showlegend=True,
-        xaxis=dict(gridcolor="#F0F0F0", title="Loan Amount", color="#1A1A1A"),
-        yaxis=dict(gridcolor="#F0F0F0", title="Last Transaction Amount", color="#1A1A1A"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                    font=dict(color="#1A1A1A"))
+        legend=legend_style(),
+        xaxis=dict(title="Loan Amount"),
+        yaxis=dict(title="Last Transaction Amount")
     ))
     st.plotly_chart(fig3, use_container_width=True)
 
+    # Threshold comparison table
     st.markdown('<div class="section-header">Threshold Comparison: 50% vs 80%</div>',
                 unsafe_allow_html=True)
 
@@ -798,8 +704,7 @@ elif page == "Query 3: Cash-Out Risk":
     st.markdown("""
     <div class="insight-box">
         <b>SQL Technique:</b> ROW_NUMBER() window function partitioned by account_id and
-        ordered by date descending to find the most recent transaction per account in a
-        single pass. The original correlated subquery version ran for over one hour on
-        1,056,320 rows without completing. ROW_NUMBER() reduced runtime to under 5 seconds.
+        ordered by date descending. The original correlated subquery ran for over one hour
+        on 1,056,320 rows. ROW_NUMBER() reduced runtime to under 5 seconds.
     </div>
     """, unsafe_allow_html=True)
