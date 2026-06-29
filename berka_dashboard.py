@@ -749,7 +749,7 @@ elif page == "Query 3: Cash-Out Risk":
         return ""
 
     st.dataframe(
-        comparison.style.applymap(highlight_risk, subset=["Risk @ 80%", "Risk @ 50%"]),
+        comparison.style.map(highlight_risk, subset=["Risk @ 80%", "Risk @ 50%"]),
         use_container_width=True, hide_index=True
     )
 
